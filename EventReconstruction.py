@@ -3,6 +3,7 @@
 # Author: Davide Basilico davide.basilico@mi.infn.it  2024 March 27
 
 import numpy as np
+import uproot
 import matplotlib.pyplot as plt
 import sys
 from scipy.optimize import curve_fit
@@ -16,9 +17,11 @@ occurrences = {}
 sums = {}
 occurrences_HG = {}
 sums_HG = {}
+sums_HG_CN = {}
 x_CM_per_numero = {}
 y_CM_per_numero = {}
 z_CM_per_numero = {}
+Charge_Norm = {}
 
 #### READING THE WF ANALYZER OUTPUT
 data = np.genfromtxt(sys.argv[1], skip_header=0)  #in case, skip the first line which should be an header and change skip_header=0
@@ -32,6 +35,7 @@ ID_channel = data[:, 7]
 xx = data[:, 9]
 yy = data[:, 10]
 zz = data[:, 11]
+LivePMTs = data[:, 12]
 
 for numero in np.unique(index):
     indici = index == numero
@@ -41,7 +45,7 @@ for numero in np.unique(index):
     y_CM_per_numero[numero] = y_CM
     z_CM = np.sum(charge[indici] * zz[indici]) / np.sum(charge[indici])
     z_CM_per_numero[numero] = z_CM
-    print(numero, np.sum(charge[indici]), x_CM,y_CM,z_CM)
+    print(numero, np.sum(charge[indici]/LivePMTs[indici]), x_CM,y_CM,z_CM)
 
 WF_RiseTime_diff_aligned = np.zeros_like(WF_RiseTime)
 WF_RiseTime_diff = np.zeros_like(WF_RiseTime)
@@ -79,6 +83,7 @@ for i in range(len(index)):
     if ID_channel[i] % 2 != 0:
         occurrences_HG[idx] = occurrences_HG.get(idx, 0) + 1
         sums_HG[idx] = sums_HG.get(idx, 0) + charge[i]
+        sums_HG_CN[idx] = sums_HG_CN.get(idx, 0) + charge[i]/LivePMTs[i]
 
 
 for idx in sums:
@@ -91,6 +96,10 @@ sums_values = [-x for x in sums_values]
 occurrences_counts_HG = list(occurrences_HG.values())
 sums_values_HG = list(sums_HG.values())
 sums_values_HG = [-x for x in sums_values_HG]
+
+sums_values_HG_CN = list(sums_HG_CN.values())
+sums_values_HG_CN = [-x for x in sums_values_HG_CN]
+
 
 x_CM_array = np.array(list(x_CM_per_numero.values())) / 1000
 y_CM_array = np.array(list(y_CM_per_numero.values())) / 1000
@@ -209,7 +218,28 @@ plt.hist(min_WF_RiseTime_per_evento, bins = 200, range = (100,600) , color = "se
 plt.xlabel('minimum time rise (for each event)')
 plt.ylabel('entries')
 plt.tight_layout()
-plt.show()
+#plt.show()
 
+Charge_Norm = np.array(Charge_Norm)
 
+print(Charge_Norm)
+print(Charge_Norm.size)
+print(Charge_Norm.shape)
 
+output_filename = "output.root"
+
+# Apre il file ROOT in modalità scrittura
+with uproot.recreate(output_filename) as f:
+    # Crea un nuovo file
+    f["RecEvents"] = {
+    	"index" : np.unique(index),
+        "x": x_CM_array,
+        "y": y_CM_array,
+        "z": z_CM_array,
+        "r": r_CM_array,
+        "FiredPMTs": occurrences_counts_HG,
+        "Charge": np.array(sums_values_HG)/1000,
+        "Charge_Norm" : np.array(sums_values_HG_CN)/1000
+    }
+
+print("ROOT file:", output_filename)
