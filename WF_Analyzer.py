@@ -6,6 +6,7 @@ import uproot
 import re
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 import awkward as ak
 from datetime import datetime
 
@@ -22,7 +23,7 @@ class Waveform:
 			threshold_absolute = 20
 			return self.baseline - self.min_value > threshold_absolute
 		elif method == 'std_dev':
-			threshold_std_dev = 4
+			threshold_std_dev = 5
 			return (self.baseline - self.min_value) > threshold_std_dev * self.std_dev_baseline
 		else:
 			raise ValueError("Threshold finder method not valid. Please use 'baseline' or 'std_dev'.")
@@ -76,26 +77,31 @@ def read_all_PMTs_coordinates(nome_file):
 				continue
 	return x, y, z, theta
 
-def find_PMT_Coordinates(file_path, GCUID_user, GCUChannel_user):
-	try:
-		with open(file_path, 'r') as file:
-			for line in file:
-				columns = line.strip().split('\t')				
-				GCUChannel_user_true = 777
-				
-				if GCUChannel_user == 0 or GCUChannel_user == 1:
-					GCUChannel_user_true = 0
-				if GCUChannel_user == 2 or GCUChannel_user == 3:
-					GCUChannel_user_true = 1
-				if GCUChannel_user == 4 or GCUChannel_user == 5:
-					GCUChannel_user_true = 2			  	
-			  
-				if (len(columns) == 14) and (int(columns[1]) == int(GCUID_user)) and (int(columns[3]) == int(GCUChannel_user_true)):
-					return (columns[11], columns[12], columns[13])
-	except FileNotFoundError:
-		print("PMT coordinates file not found.")
-	
-	return None
+def load_PMT_coordinates(file_path):
+    PMT_coordinates = {}
+    try:
+        with open(file_path, 'r') as file:
+            for line in file:
+                columns = line.strip().split('\t')
+                if len(columns) == 14:
+                    GCUID = int(columns[1])
+                    GCUChannel_true = int(columns[3]) // 2
+                    if GCUID not in PMT_coordinates:
+                        PMT_coordinates[GCUID] = {}
+                    PMT_coordinates[GCUID][GCUChannel_true] = (columns[11], columns[12], columns[13])
+    except FileNotFoundError:
+        print("PMT coordinates file not found.")
+    return PMT_coordinates
+
+PMT_coordinates_data = load_PMT_coordinates("OSIRIS_cable_map.conf")
+
+def find_PMT_Coordinates(GCUID_user, GCUChannel_user):
+    GCUID_user = int(GCUID_user)
+    GCUChannel_user_true = int(GCUChannel_user) // 2
+    if GCUID_user in PMT_coordinates_data and GCUChannel_user_true in PMT_coordinates_data[GCUID_user]:
+        return PMT_coordinates_data[GCUID_user][GCUChannel_user_true]
+    else:
+        return None
 
 def main():
 
@@ -120,7 +126,7 @@ def main():
 	print(extracted_string, extracted_date)	
 
 	with open(sys.argv[2], 'a') as file:
-		for j in range(0, Entries):
+		for j in range(0, 1000):
 			events = tree.arrays(["eventId","trgNsec","IDdata.samples","IDdata.GCUID","IDdata.channelID"], entry_start=j, entry_stop=j+1)
 			trgNsec = ak.to_numpy(events["trgNsec"])
 			IDdata_GCUID = ak.to_numpy(events["IDdata.GCUID"])
@@ -130,20 +136,25 @@ def main():
 			print("Analyzing event " + str(j))
 
 			for i in range(0, IDdata_channelID.shape[1]-1):
-				waveform = Waveform(IDdata_samples_vector[0, i, :], threshold_method='std_dev', baseline_entries=20)
-				fired_PMTs, integrated_charge, idx = waveform.analyze_waveform()
-
 
 				if IDdata_channelID[0,i] % 2 == 0:  # Only high-gains
 					continue
 
+				waveform = Waveform(IDdata_samples_vector[0, i, :], threshold_method='std_dev', baseline_entries=20)
+
+				fired_PMTs, integrated_charge, idx = waveform.analyze_waveform()
+				time_2 = time.time()
+
 				if fired_PMTs > fired_PMTs_Cut:
-					coordinate = find_PMT_Coordinates("OSIRIS_cable_map.conf", IDdata_GCUID[0,i], IDdata_channelID[0,i])
-
-
+					coordinate = find_PMT_Coordinates(IDdata_GCUID[0,i], IDdata_channelID[0,i])
+					time_3 = time.time()
 					with open(sys.argv[2], 'a') as file:
 						file.write(f"{extracted_string}\t{extracted_date}\t{j}\t{integrated_charge}\t{i}\t{idx}\t{trgNsec[0]}\t{IDdata_channelID[0, i]}	\t{IDdata_GCUID[0, i]}\t{coordinate[0]}\t{coordinate[1]}\t{coordinate[2]}\t{int(IDdata_channelID.shape[1]/2)}\n")
 
-if __name__ == "__main__":
-	main()
 
+
+if __name__ == "__main__":
+	time_start = time.time()
+	main()
+	time_end = time.time()
+	print("Run time: " + str(time_end-time_start))
