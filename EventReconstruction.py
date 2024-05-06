@@ -22,6 +22,8 @@ data = pd.read_csv(sys.argv[1], delimiter='\t')
 grouped = data.groupby('index')
 total_charge = -grouped['charge'].sum()
 average_live_pmts = grouped['LivePMTs'].mean()
+trgTime = grouped['trgTime'].mean()
+trgTime_diff = trgTime.diff().shift(-1)
 normalized_charge = total_charge / average_live_pmts
 Fired_PMTs = grouped.size()
 
@@ -55,6 +57,8 @@ results = pd.DataFrame({
     'x_CM': x_CM,
     'y_CM': y_CM,
     'z_CM': z_CM,
+    'trgTime' : trgTime,
+    'trgTime_diff' : trgTime_diff,
     'TOF' : TOF,
     'WF_RiseTime' : WF_RiseTime_per_event,
     'WF_RiseTime_diff' : WF_RiseTime_diff_per_event
@@ -71,6 +75,8 @@ with uproot.recreate(output_filename) as f:
         "Fired_PMTs": results['Fired_PMTs'].to_numpy(),
         "Charge": results['Charge'],
         "Charge_Norm": results['Charge_Norm'],
+        'trgTime' : trgTime,
+        'trgTime_diff' : trgTime_diff,
         "TOF": results['TOF'],
         'WF_RiseTime' : results['WF_RiseTime'],
         'WF_RiseTime_diff' : results['WF_RiseTime_diff']
