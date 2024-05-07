@@ -17,7 +17,9 @@ def weighted_center(group, coord):
 
 plt.rcParams.update({'font.size': 12})
 
-data = pd.read_csv(sys.argv[1], delimiter='\t')
+data_unclean = pd.read_csv(sys.argv[1], delimiter='\t')
+
+data = data_unclean.replace([np.inf, -np.inf], np.nan).dropna(subset=['charge'])
 
 grouped = data.groupby('index')
 total_charge = -grouped['charge'].sum()
@@ -63,6 +65,9 @@ results = pd.DataFrame({
     'WF_RiseTime' : WF_RiseTime_per_event,
     'WF_RiseTime_diff' : WF_RiseTime_diff_per_event
 })
+
+#for idx, row in results.iterrows():
+#    print(f"Event index: {idx}, integrated charge: {row['Charge']}")
 
 output_filename = sys.argv[2]
 
