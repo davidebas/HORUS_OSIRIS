@@ -24,7 +24,10 @@ from numba import njit,jit
 
 def main():
 
-	synth_mode = 'false'
+	synth_mode = 'true'
+	cleaning = 'false'
+	
+	peak_corrected = []
 	
 	if len(sys.argv) < 3:
 		print("Usage: python WF_Analyzer.py [Input_RootFile] [Output_TxtFile]")
@@ -47,6 +50,7 @@ def main():
 		file = uproot.open(sys.argv[1])
 		tree = file['EventTree']
 		Entries = int(tree.num_entries) - 1 
+		#Entries = 2000
 	
 		extracted_string, extracted_date = extract_date_and_formatted_date(sys.argv[1])
 		print("Run: " , extracted_string, "\nDate:", extracted_date)		
@@ -68,15 +72,15 @@ def main():
 						if IDdata_channelID[i] % 2 == 0:  # Only high-gains
 							continue
 										
-						waveform = Waveform(IDdata_samples_vector[i, :], threshold_method='std_dev', baseline_entries=50)
+						waveform = Waveform(IDdata_samples_vector[i, :], threshold_method='std_dev', baseline_entries=50, cleaning=cleaning)
 						fired_PMTs, integrated_charge, rise_time = waveform.analyze_waveform()
 
 						if fired_PMTs > 0:
 							coordinate, gain_corr = find_PMT_Coordinates(IDdata_GCUID[i], IDdata_channelID[i])
-							integrated_charge = integrated_charge / float(gain_corr) * 100.
+							integrated_charge = integrated_charge / float(gain_corr) * 110.					
 
-							file.write(f"{extracted_string}\t{extracted_date}\t{start+j}\t{integrated_charge}\t{i}\t{rise_time}\t{trgTime[0]}\t{IDdata_channelID[i]}\t{IDdata_GCUID[i]}\t{coordinate[0]}\t{coordinate[1]}\t{coordinate[2]}\t{int(IDdata_channelID.shape[0]/2)}\t{gain_corr}\n")
-						
+							
+							file.write(f"{extracted_string}\t{extracted_date}\t{start+j}\t{integrated_charge}\t{i}\t{rise_time}\t{trgTime[0]}\t{IDdata_channelID[i]}\t{IDdata_GCUID[i]}\t{coordinate[0]}\t{coordinate[1]}\t{coordinate[2]}\t{int(IDdata_channelID.shape[0]/2)}\t{gain_corr}\n")				
 
 	if(synth_mode == 'true'):
 	
@@ -96,8 +100,11 @@ def main():
 					synth_params = {'flat_height': 11000, 'gaussian_amplitude': 0,'gaussian_center': 250,'gaussian_width': 10}
 					
 				samples = generate_synthetic_waveform(synth_params)					
-				waveform = Waveform(samples, threshold_method='std_dev', baseline_entries=50)
+				waveform = Waveform(samples, threshold_method='std_dev', baseline_entries=50, cleaning=cleaning)
 				fired_PMTs, integrated_charge, rise_time = waveform.analyze_waveform()
+
+
+
 				#print(start,fired_PMTs, integrated_charge, rise_time)
 				
 				file.write(f"{extracted_string}\t{extracted_date}\t{start}\t{integrated_charge}\t{rise_time}\n")

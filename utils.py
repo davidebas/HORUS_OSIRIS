@@ -85,15 +85,13 @@ def generate_synthetic_waveform(params):
 	gaussian_center = params['gaussian_center']
 	gaussian_width = params['gaussian_width']
 
-	# Generazione della waveform sintetica
 	x = np.arange(600)
-	# Creazione del rumore di fondo con fluttuazioni casuali
-	background_noise = np.random.normal(0, 5, size=600)  # Deviazione standard di 0.1 per esempio
-	flat_component = np.ones_like(x) * flat_height + background_noise
-	
-	# Generazione del contributo gaussiano con fluttuazioni casuali
-	gaussian_noise = np.random.normal(0, 0.05, size=600)  # Deviazione standard di 0.05 per esempio
-	gaussian_component = np.exp(-0.5 * ((x - gaussian_center) / gaussian_width)**2) * (gaussian_amplitude + gaussian_noise)
+	background_noise = np.random.normal(0, 5, size=600)
+	flat_component = np.ones_like(x) * flat_height + background_noise	
+	gaussian_noise = np.random.normal(0, 0.05, size=600) 
+	gaussian_component_1 = np.exp(-0.5 * ((x - gaussian_center) / gaussian_width)**2) * (gaussian_amplitude + gaussian_noise)
+	gaussian_component_2 = np.exp(-0.5 * ((x - gaussian_center - 200) / gaussian_width)**2) * (gaussian_amplitude + gaussian_noise)
+	gaussian_component = gaussian_component_1 + gaussian_component_2
 	
 	synthetic_samples = flat_component + gaussian_component
 
