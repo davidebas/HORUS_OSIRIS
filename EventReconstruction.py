@@ -144,7 +144,7 @@ def apply_muon_veto(results,Threshold_OD_Fired):
     time_threshold = 20E-6
     for i, (index, row) in enumerate(tqdm(events_to_remove.iterrows(), desc="\tApplying time cut: ")):
         if i == 0:
-            print("\n\n\tIt could take time. This is the total number of iterations: ", len(events_to_remove.index.to_numpy()), ". Be patient...\n")
+            print("\n\n\tIt could take time. This is the total number of iterations: ", len(events_to_remove.index.to_numpy()), " \n")
         time_diff_condition = (results['trgTime'] - row['trgTime']).abs() < time_threshold
         results = results.loc[~time_diff_condition]
 
@@ -194,6 +194,7 @@ def save_results(results, output_file, input_file, all_files, folder_path):
 
 def main():
     args = parse_arguments()
+    print("### Welcome to the HORUS Event Reconstruction ###")		
 
     data_unclean = load_data(args.InputFile, args.All, args.Dir)
     if data_unclean is None:

@@ -75,8 +75,7 @@ def find_PMT_Coordinates(GCUID_data, GCUChannel_data):
         #print("############")
         return PMT_coordinates_data[GCUID_data][GCUChannel_data_halved], gain_corr_data[GCUID_data][GCUChannel_data_halved]
     else:
-        print("OOOH")
-        return None
+        return ((0,0,0),0)
         
 
 def generate_synthetic_waveform(params):

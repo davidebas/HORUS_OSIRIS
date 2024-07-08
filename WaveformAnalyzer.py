@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# OSIRIS WAVEFORM BASIC ANALYZER  v.0.1.0
-# Author: Davide Basilico davide.basilico@mi.infn.it  2024 May 06
+# OSIRIS WAVEFORM BASIC ANALYZER  v.0.2.0 (2024 July 08)
+# Author: Davide Basilico davide.basilico@mi.infn.it , Marco Beretta marco.beretta@mi.infn.it
 
 import sys
 import uproot
@@ -27,6 +27,7 @@ OD_ids = [(17,1), (18,1), (19,5), (20,1), (37, 3), (38,1), (38,5), (39,1), (40,1
 def main():
 
 	synth_mode = 'false'
+	cleaning = 'false'
 	
 	if len(sys.argv) < 3:
 		print("Usage: python WF_Analyzer.py [Input_RootFile] [Output_TxtFile]")
@@ -43,7 +44,7 @@ def main():
 	with open(sys.argv[2], 'w'):
 		pass
 
-	print("### Welcome to WaveformAnalyzer ###")		
+	print("### Welcome to the HORUS WaveformAnalyzer ###")		
 
 	if(synth_mode == 'false'):
 	
@@ -63,8 +64,6 @@ def main():
 				trgTime = []
 
 				for j in range(stop - start):
-					#print(events["trgSec"][j],events["trgNsec"][j], events["IDdata.channelID"][j])
-					#ak.to_numpy(events["trgSec"][j]) + 1e-9*ak.to_numpy(events["trgNsec"][j])
 					trgTime.append(events["trgSec"][j] + 1e-9*events["trgNsec"][j])
 					IDdata_GCUID = ak.to_numpy(events["IDdata.GCUID"][j])
 					IDdata_channelID = ak.to_numpy(events["IDdata.channelID"][j])
@@ -75,11 +74,12 @@ def main():
 						if IDdata_channelID[i] % 2 == 0:  # Only high-gains
 							continue
 										
-						waveform = Waveform(IDdata_samples_vector[i, :], threshold_method='std_dev', baseline_entries=50)
+						waveform = Waveform(IDdata_samples_vector[i, :], threshold_method='std_dev', baseline_entries=50, cleaning=cleaning)
 						fired_PMTs, integrated_charge, rise_time = waveform.analyze_waveform()
 
 						if fired_PMTs > 0:
 							coordinate, gain_corr = find_PMT_Coordinates(IDdata_GCUID[i], IDdata_channelID[i])
+							if(gain_corr == 0): continue
 							integrated_charge = integrated_charge / float(gain_corr) * 100.
 
 							if (IDdata_GCUID[i], IDdata_channelID[i]) in OD_ids:
@@ -109,7 +109,7 @@ def main():
 					synth_params = {'flat_height': 11000, 'gaussian_amplitude': 0,'gaussian_center': 250,'gaussian_width': 10}
 					
 				samples = generate_synthetic_waveform(synth_params)					
-				waveform = Waveform(samples, threshold_method='std_dev', baseline_entries=50)
+				waveform = Waveform(samples, threshold_method='std_dev', baseline_entries=50, cleaning=cleaning)
 				fired_PMTs, integrated_charge, rise_time = waveform.analyze_waveform()
 				#print(start,fired_PMTs, integrated_charge, rise_time)
 				
